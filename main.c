@@ -2,166 +2,155 @@
 //
 // Can Caglar 26th March 2022
 //
-// TODO: Separate the flexi library, update Makefile
 // TODO: Add a test folder which includes test files (stdin the tests, add asserts for tests)
 // TODO: Get main algo to work!
 //
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <time.h>
 #include <math.h>
-
-typedef struct tFlexitime
-{
-    int hours;
-    int minutes;
-} tFlexitime;
-
-typedef int seconds;
-
-void flexiUpdateValues(tFlexitime* t, int hours, int minutes);
-
-tFlexitime flexiInit(const int hours, const int minutes)
-{
-    tFlexitime ret;
-    flexiUpdateValues(&ret, hours, minutes);
-    return ret;
-}
-
-void flexiPrint(const tFlexitime* t)
-{
-    printf("%d:%d\n", t->hours, t->minutes);
-}
-
-void flexiUpdateValues(tFlexitime* t, const int hours, const int minutes)
-{
-    // todo, make it so passing minutes > 60 will append to hours.
-    t->hours = hours;
-    t->minutes = minutes;
-}
+#include <limits.h>
+#include "FlexiHours.h"
 
 // Returns error or returnInt
-int* fgeti(int* returnInt)
+// error is -1
+int fgeti(FILE* fp, int* retInt)
 {
-    // First get all string from stdin
-    char ret[50];
-    fgets(ret, 50, stdin);
-    ret[strcspn(ret, "\n")] = 0;  // clear \n
-
-    // Convert str to long
-    // TODO: @CC Continue here!
-    char* errorChar;
-    long returnLong = strtol(ret, errorChar, 10);
-    if (ret != errorChar)
+    // Function which asks user to enter an integer
+    #define MAX_LEN 13
+    *retInt = 0;
+    int retErr = 0;
+    // First get line as a string
+    char str[MAX_LEN] = { 0 };
+    if (fgets(str, MAX_LEN, fp) == NULL)
     {
-
+        puts("fgeti - Failed to read from filepointer.");
+        retErr = -1;
     }
-    else
+    long tempVal = 0;
+    if (retErr != -1)
     {
-        returnInt = NULL;
+        // we have potential string, let's convert it to a long
+        char* endPtr;
+        errno = 0;  // reset error
+        tempVal = strtol(str, &endPtr, 0);
+        // Error check
+        if (str == endPtr)
+        {
+            puts("fgeti - No character was read.");
+            retErr = -1;
+        }
+        else if (*endPtr && *endPtr != '\n')
+        {
+            puts("fgeti - Could not read the whole input. Failing...");
+            retErr = -1;
+        }
+        else if (errno == ERANGE)
+        {
+            // Out of long range
+            puts("fgeti - The entered integer is either too low or too high!");
+            retErr = -1;
+        }
+        else
+        {
+            if (tempVal >= INT_MIN && tempVal <= INT_MAX)
+            {
+                // Got a number
+                *retInt = tempVal;
+                retErr = 0;
+            }
+            else
+            {
+                // Out of int range
+                puts("fgeti - The entered integer is either too low or too high!");
+                retErr = -1;
+            }
+        }
     }
-
-    return returnInt;
+    return retErr;
 }
 
-// Returns 0 if success, non-0 if error.
-int getTimeFromUser(tFlexitime* retTime)
-{
-    printf("Enter HOURS: ");
-    retTime->hours = fgeti() % 24;
-    printf("Enter MINUTES: ");
-    retTime->minutes = fgeti() % 60;
-    return 0;
-}
 
-// Convert tFlexitime to seconds. return -1 if fail.
-seconds flexiTimeToSeconds(const tFlexitime* time)
+void getTimeFromUser(flxFlexiHour* time)
 {
-    seconds rets = -1;
-    if (time)
+    // scanf("%d", &time->hours);
+    int userHours, userMinutes;
+    printf("Enter hours: ");
+    while (fgeti(stdin, &userHours) == -1 || userHours < 0)
     {
-        rets = (time->hours * 60) + time->minutes;  // to minutes
-        rets *= 60;   // to seconds
-        rets = rets > 0 ? rets : -1;
+        puts("Please try inserting a positive integer again.");
     }
-    return rets;
-}
-
-// Convert second to flexiTime, return -1 if fail
-// Will discard unused seconds
-int flexiSecondsToFlexitime(tFlexitime* ret, const seconds sec)
-{
-    int err = -1;
-    if (ret)
+    printf("Hours entered: %d. Now enter minutes: ", userHours);
+    while (fgeti(stdin, &userMinutes) == -1 || userMinutes < 0)
     {
-        int totalMinutes = (int)floor(sec / 60);    // convert seconds to minutes
-        int hours = (int)floor(totalMinutes / 60);  // convert minutes to hours
-        ret->hours = hours;
-        ret->minutes = totalMinutes % 60;           // update remainder minutes
+        puts("Please try inserting a positive integer again.");
     }
-    return err;
+    printf("Minutes entered: %d\n", userMinutes);
+    flxUpdate(time, userHours, userMinutes);
+    printf("Got: ");
+    flxprint(time);
 }
 
 int main()
 {
-    // Prestart
-    srand((unsigned)time(NULL));  // seed random
-    // Prestart end
+    puts("Welcome to flexicalc!");
 
-    puts("Welcome to flexicalc");
-
-    tFlexitime flexiReduced = flexiInit(0, 0);
-    tFlexitime flexiGained = flexiInit(0, 0);
-    const tFlexitime workDays = flexiInit(7, 30);
-    tFlexitime givingBack = flexiInit(0, 0);
+    flxFlexiHour flexiReduced, flexiGained, givingBack, workDays;
+    flxUpdate(&flexiReduced, 0, 0);
+    flxUpdate(&flexiGained, 0, 0);
+    flxUpdate(&givingBack, 0, 0);
+    flxUpdate(&workDays, 7, 30);
 
     // Ask for flexi hours reduced
-    puts("Enter flexi reduced:");
+    printf("First entering \"flexi reduced\" time. ");
     getTimeFromUser(&flexiReduced);
-
-    puts("Enter flexi gained:");
+    printf("Next entering \"flexi gained\" time. ");
     getTimeFromUser(&flexiGained);
 
     // Debug
     printf("Reduced hours: ");
-    flexiPrint(&flexiReduced);
+    flxprint(&flexiReduced);
     printf("Gained hours: ");
-    flexiPrint(&flexiGained);
+    flxprint(&flexiGained);
     // Debug end
 
     // Ask for how many full days left to work
-
-    printf("Enter full days left to work: ");
-    int workDaysLeft = fgeti() % 7 + 1;  // has to be at least 1
-    printf("%d\n", workDaysLeft);
-    
-    // Do calculation
-    seconds workSecondsLeft = flexiTimeToSeconds(&workDays);
-    printf("workSeconds = %d | err = %d\n", workSecondsLeft, errno);
-    workSecondsLeft *= workDaysLeft;
-    printf("workSecondsLeft = %d | err = %d\n", workSecondsLeft, errno);
-
-    seconds gainedSeconds = flexiTimeToSeconds(&flexiGained);
-    seconds reducedSeconds = flexiTimeToSeconds(&flexiReduced);
-    printf("gainedSeconds = %d | reducedSeconds = %d\n", gainedSeconds, reducedSeconds);
-    seconds secondsToGiveBack = (workSecondsLeft - reducedSeconds) - gainedSeconds;
-    printf("secondsToGiveBack = %d\n", secondsToGiveBack);
-
-    char returnPrint[50] = "Work less: ";
-    if (secondsToGiveBack < 0)
+    printf("Enter full work days left: ");
+    int workDaysLeft;
+    while (fgeti(stdin, &workDaysLeft) == -1 || workDaysLeft < 0)
     {
-        strncpy(returnPrint, "Work more: ", 50);
-        secondsToGiveBack *= -1;
+        printf("Please insert a positive integer: ");
     }
-    flexiSecondsToFlexitime(&givingBack, secondsToGiveBack);
+    printf("Work days left recevied = %d\n", workDaysLeft);
 
-    printf("Giving back over %d days: " , workDaysLeft);
-    flexiPrint(&givingBack);
+    // Do calculation
+    flxminute dailyMinutes, minsLeftToWork, minsReduced, minsGained;
 
-    printf("Here are your results: \n");
+    flxTimeToMin(&flexiReduced, &minsReduced);
+    flxTimeToMin(&flexiGained, &minsGained);
+    flxTimeToMin(&workDays, &dailyMinutes);
+    minsLeftToWork = dailyMinutes * workDaysLeft;
 
+    printf("Mins reduced: %d | Mins gained: %d | Mins left to work: %d | Daily mins: %d\n",
+        minsReduced,
+        minsGained,
+        minsLeftToWork,
+        dailyMinutes);
+
+    flxminute trueMinsReduced = minsReduced - minsLeftToWork;
+    flxminute currentBalance = minsGained - trueMinsReduced;
+    flxminute perDay = currentBalance / workDaysLeft;
+    printf("Current balance = %d\n", currentBalance);
+    if (perDay >= 0)
+    {
+        printf("In credit: ");
+    }
+    else
+    {
+        perDay *= -1;   // modularise
+        printf("In debt: ");
+    }
+    printf("%d minutes over %d day(s). \n", perDay, workDaysLeft);
     return 0;
 }

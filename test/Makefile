@@ -1,7 +1,7 @@
 CC := gcc
 CFLAGS := -Wall -O0 -MD -MP
-SRCDIR := . ./src
-INCDIR := . ./include
+SRCDIR := . ./../src
+INCDIR := . ./../include
 SRCS := $(foreach SRC, $(SRCDIR), $(wildcard $(SRC)/*.c))
 INCFLAG := $(foreach INC, $(INCDIR), -I$(INC))
 
@@ -10,7 +10,7 @@ DEPS := $(OBJS:.o=.d)
 
 .PHONY: all clean debug
 
-all: debug flexicalc
+all: debug flexitest
 
 debug:
 	@echo "SRCS = $(SRCS)"
@@ -18,7 +18,7 @@ debug:
 	@echo "OBJS = $(OBJS)"
 	@echo "DEPS = $(DEPS)"
 
-flexicalc: $(OBJS)
+flexitest: $(OBJS)
 	$(CC) $^ -o $@
 
 %.o: %.c
