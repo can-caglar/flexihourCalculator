@@ -1,9 +1,13 @@
-// Flexi hour calculator
+// Flexi hour calculator.
+// Enter hours reduced, gained and days left of work,
+// the program will tell you how many days in debt/credit you are.
+//
+// Purpose of this program is to save time in the long run
+// when calculating how many hours I am in debt/credit.
+// ADP displays this information in a very strange way hence the
+// need for this calculator! 
 //
 // Can Caglar 26th March 2022
-//
-// TODO: Add a test folder which includes test files (stdin the tests, add asserts for tests)
-// TODO: Get main algo to work!
 //
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +15,7 @@
 #include <errno.h>
 #include <math.h>
 #include <limits.h>
+#include <unistd.h>
 #include "FlexiHours.h"
 
 // Returns error or returnInt
@@ -76,20 +81,18 @@ void getTimeFromUser(flxFlexiHour* time)
 {
     // scanf("%d", &time->hours);
     int userHours, userMinutes;
-    printf("Enter hours: ");
+    printf("Enter hours HH: ");
     while (fgeti(stdin, &userHours) == -1 || userHours < 0)
     {
-        puts("Please try inserting a positive integer again.");
+        printf("Please insert a positive integer only: ");
     }
-    printf("Hours entered: %d. Now enter minutes: ", userHours);
+    printf("Hours entered: %d. Now enter minutes MM: ", userHours);
     while (fgeti(stdin, &userMinutes) == -1 || userMinutes < 0)
     {
-        puts("Please try inserting a positive integer again.");
+        printf("Please insert a positive integer only: ");
     }
     printf("Minutes entered: %d\n", userMinutes);
     flxUpdate(time, userHours, userMinutes);
-    printf("Got: ");
-    flxprint(time);
 }
 
 int main()
@@ -103,9 +106,9 @@ int main()
     flxUpdate(&workDays, 7, 30);
 
     // Ask for flexi hours reduced
-    printf("First entering \"flexi reduced\" time. ");
+    printf("First entering \"flexi reduced\" time HH:MM.\n");
     getTimeFromUser(&flexiReduced);
-    printf("Next entering \"flexi gained\" time. ");
+    printf("Next entering \"flexi gained\" time. HH:MM.\n");
     getTimeFromUser(&flexiGained);
 
     // Debug
@@ -118,30 +121,24 @@ int main()
     // Ask for how many full days left to work
     printf("Enter full work days left: ");
     int workDaysLeft;
-    while (fgeti(stdin, &workDaysLeft) == -1 || workDaysLeft < 0)
+    while (fgeti(stdin, &workDaysLeft) == -1 || workDaysLeft < 1)
     {
-        printf("Please insert a positive integer: ");
+        printf("Please insert an integer greater than 1: ");
     }
-    printf("Work days left recevied = %d\n", workDaysLeft);
-
+    puts("Performing calculation...");
+    sleep(1); // fake delay to prepare user that result is coming
     // Do calculation
     flxminute dailyMinutes, minsLeftToWork, minsReduced, minsGained;
-
+    // Convert time to minutes to make arithmetics earier.
     flxTimeToMin(&flexiReduced, &minsReduced);
     flxTimeToMin(&flexiGained, &minsGained);
     flxTimeToMin(&workDays, &dailyMinutes);
     minsLeftToWork = dailyMinutes * workDaysLeft;
-
-    printf("Mins reduced: %d | Mins gained: %d | Mins left to work: %d | Daily mins: %d\n",
-        minsReduced,
-        minsGained,
-        minsLeftToWork,
-        dailyMinutes);
-
+    // Second part of calculation (split this up to make it less error prone)
     flxminute trueMinsReduced = minsReduced - minsLeftToWork;
     flxminute currentBalance = minsGained - trueMinsReduced;
-    flxminute perDay = currentBalance / workDaysLeft;
-    printf("Current balance = %d\n", currentBalance);
+    flxminute perDay = (flxminute)round((double)(currentBalance) / workDaysLeft);
+    printf("Total balance over %d days: %d minutes.\n", workDaysLeft, currentBalance);
     if (perDay >= 0)
     {
         printf("In credit: ");
@@ -151,6 +148,6 @@ int main()
         perDay *= -1;   // modularise
         printf("In debt: ");
     }
-    printf("%d minutes over %d day(s). \n", perDay, workDaysLeft);
+    printf("%d minutes every day for %d day(s).", perDay, workDaysLeft);
     return 0;
 }
